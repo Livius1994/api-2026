@@ -5,6 +5,16 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "CPF não informado" });
   }
 
+  // 🔓 CORS LIBERADO
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+
+  // Preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   const apiUrl = `https://apiencriptadavcl.vercel.app/api/proxym?cpf=${encodeURIComponent(cpf)}`;
 
   try {
@@ -19,17 +29,18 @@ module.exports = async (req, res) => {
       }
     });
 
+    const raw = await apiResponse.text();
+
     if (!apiResponse.ok) {
-      return res
-        .status(apiResponse.status)
-        .json({ error: "Failed to fetch data from API" });
+      return res.status(apiResponse.status).json({
+        error: "Upstream failed",
+        raw
+      });
     }
 
-    const data = await apiResponse.json();
-    return res.status(200).json(data);
-
-  } catch (error) {
-    console.error("Proxy error:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).send(raw);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Internal error" });
   }
 };
